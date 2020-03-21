@@ -1,21 +1,20 @@
-POST http://localhost:9009/api/cards/0
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MCwibmFtZSI6IlBldHlhIiwiZXhwIjoxNTg0NzA5MDUwfQ.5N3oREIhPW6gPo30GzStAGTus_F2nYQfBFzxi8zNX8I
+POST http://localhost:9009/api/cards
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IlZhc3lhIiwiZXhwIjoxNTg0NzgxMTQwfQ.24kaVe-tUkfUAgegL6ap_mwSSGKTAFuvfQlHsuNY3eg
 Content-Type: application/json
 Accept: application/json
 
 {
-  "Id": 0,
-  "Number": "202160000000009",
-  "Name": "Milly",
-  "Balance": 100,
-  "OwnerID": 2
+  "id": 0,
+  "name": "alif",
+  "balance": 400,
+  "owner_id": 4
 }
 
 ###
 
 # No admin list cards
 GET http://localhost:9009/api/cards
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IlZhc3lhIiwiZXhwIjoxNTg0NzA5MDUwfQ.IH-UbER3ou6Hm1ECBwxDpmweLyOP7vBumFjrmoFMMw8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MCwibmFtZSI6IlBldHlhIiwiZXhwIjoxNTg0NzgxMTQwfQ.TYSVgKi94XIDtqIApWTh4cSObX57pCo38NU086YBjYM
 
 ###
 

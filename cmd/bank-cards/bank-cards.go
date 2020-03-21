@@ -67,31 +67,25 @@ func main() {
 		requestIdier,
 		logger,
 	)
-	//exactMux.GET("/api/cards/ownerid/{id}",
-	//	server.HandleGetCardsByOwnerId,
-	//	jwtMiddleware,								delete
-	//	requestIdier,
-	//	logger,
-	//)
 	exactMux.POST("/api/cards",
 		server.HandlePostCard,
 		jwtMiddleware,
 		requestIdier,
 		logger,
 	)
-	exactMux.POST("/api/cards/{id}/blocked",
+	exactMux.POST("/api/cards/block",
 		server.HandleBlockById,
 		jwtMiddleware,
 		requestIdier,
 		logger,
 	)
-	exactMux.GET("/api/cards/unblocked/{id}",
-		server.HandleUnBlockedById,
+	exactMux.POST("/api/cards/unblock",
+		server.HandleUnBlockById,
 		jwtMiddleware,
 		requestIdier,
 		logger,
 	)
-	exactMux.POST("/api/cards/transmoney/{id}",
+	exactMux.POST("/api/cards/transmoney",
 		server.HandleTransferMoneyCardToCard,
 		jwtMiddleware,
 		requestIdier,

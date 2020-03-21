@@ -38,13 +38,27 @@ func (m *MainServer) HandleGetAllCards(writer http.ResponseWriter, request *http
 		return
 	}
 	log.Print(authentication)
-	if authentication.Id != 0 {
-		log.Printf("can't authentication is not admin, this id user = %d", authentication.Id)
-		writer.WriteHeader(http.StatusBadRequest)
+	if authentication.Id == 0 {
+		log.Print("admin")
+		log.Print("all cards")
+		models, err := m.cardsSvc.All()
+		if err != nil {
+			log.Print("can't get all cards")
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		log.Print(models)
+		err = rest.WriteJSONBody(writer, models)
+		if err != nil {
+			log.Print("can't write json get all cards")
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		return
 	}
-	log.Print("all cards")
-	models, err := m.cardsSvc.All()
+	id := authentication.Id
+	log.Printf("user by id: %d", id)
+	models, err := m.cardsSvc.ViewCardsByOwnerId(id)
 	if err != nil {
 		log.Print("can't get all cards")
 		writer.WriteHeader(http.StatusInternalServerError)
@@ -57,6 +71,7 @@ func (m *MainServer) HandleGetAllCards(writer http.ResponseWriter, request *http
 		writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	return
 }
 
 func (m *MainServer) HandleGetCardById(writer http.ResponseWriter, request *http.Request) {
@@ -72,7 +87,7 @@ func (m *MainServer) HandleGetCardById(writer http.ResponseWriter, request *http
 		return
 	}
 	log.Print(authentication)
-	log.Print("user by id")
+	log.Print("cards by id")
 	value, ok := mux.FromContext(request.Context(), "id")
 	if !ok {
 		log.Print("can't get all cards")
@@ -80,10 +95,31 @@ func (m *MainServer) HandleGetCardById(writer http.ResponseWriter, request *http
 		return
 	}
 	id, err := strconv.Atoi(value)
-	models, err := m.cardsSvc.ById(id)
+	if err != nil {
+		log.Print("can't strconv atoi to show card by id")
+		writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if authentication.Id == 0 {
+		models, err := m.cardsSvc.ById(id)
+		if err != nil {
+			log.Print("can't get all cards")
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		log.Print(models)
+		err = rest.WriteJSONBody(writer, models)
+		if err != nil {
+			log.Print("can't write json get all cards")
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		return
+	}
+	models, err := m.cardsSvc.ByIdUserCard(id, authentication.Id)
 	if err != nil {
 		log.Print("can't get all cards")
-		writer.WriteHeader(http.StatusInternalServerError)
+		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	log.Print(models)
@@ -113,7 +149,7 @@ func (m *MainServer) HandlePostCard(writer http.ResponseWriter, request *http.Re
 		log.Print("can't is not admin post cards")
 		return
 	}
-	log.Print("post user")
+	log.Print("post card")
 	model := cards.Cards{}
 	err := rest.ReadJSONBody(request, &model)
 	if err != nil {
@@ -122,8 +158,18 @@ func (m *MainServer) HandlePostCard(writer http.ResponseWriter, request *http.Re
 		return
 	}
 	log.Println(model)
-	m.cardsSvc.AddCard(model)
-
+	if model.Id != 0 {
+		log.Print("bad request")
+		log.Print("post body id not 0!!!")
+		writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = m.cardsSvc.AddCard(model)
+	if err != nil {
+		log.Printf("can't add card %d", err)
+		writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 func (m *MainServer) HandleBlockById(writer http.ResponseWriter, request *http.Request) {
@@ -139,27 +185,31 @@ func (m *MainServer) HandleBlockById(writer http.ResponseWriter, request *http.R
 		return
 	}
 	log.Print(authentication)
-	value, ok := mux.FromContext(request.Context(), "id")
-	if !ok {
-		log.Print("can't read id FromContext")
-		writer.WriteHeader(http.StatusInternalServerError)
+	model := cards.ModelBlockCard{}
+	err := rest.ReadJSONBody(request, &model)
+	if err != nil {
+		log.Printf("can't read json body: %d", err)
 		return
 	}
-	id, err := strconv.Atoi(value)
-	if err != nil {
-		log.Print("can't strconv atoi to blocked by id card")
-		writer.WriteHeader(http.StatusInternalServerError)
+	if authentication.Id == 0 {
+		err = m.cardsSvc.BlockById(model.Id)
+		if err != nil {
+			log.Print("can't to blocked card by id")
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		return
 	}
-	err = m.cardsSvc.BlockById(id)
+
+	err = m.cardsSvc.UserBlockCardById(authentication.Id, model)
 	if err != nil {
-		log.Print("can't to blocked card by id")
-		writer.WriteHeader(http.StatusInternalServerError)
+		log.Printf("can't user block card by id: %d", err)
+		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
 }
 
-func (m *MainServer) HandleUnBlockedById(writer http.ResponseWriter, request *http.Request) {
+func (m *MainServer) HandleUnBlockById(writer http.ResponseWriter, request *http.Request) {
 	authentication, ok := jwt.FromContext(request.Context()).(*auth.Auth)
 	if !ok {
 		writer.WriteHeader(http.StatusBadRequest)
@@ -172,19 +222,18 @@ func (m *MainServer) HandleUnBlockedById(writer http.ResponseWriter, request *ht
 		return
 	}
 	log.Print(authentication)
-	value, ok := mux.FromContext(request.Context(), "id")
-	if !ok {
-		log.Print("can't read id FromContext")
-		writer.WriteHeader(http.StatusInternalServerError)
+	if authentication.Id != 0 {
+		writer.WriteHeader(http.StatusBadRequest)
+		log.Print("can't is not admin unblock card")
 		return
 	}
-	id, err := strconv.Atoi(value)
+	model := cards.ModelBlockCard{}
+	err := rest.ReadJSONBody(request, &model)
 	if err != nil {
-		log.Print("can't strconv atoi to blocked by id card")
-		writer.WriteHeader(http.StatusInternalServerError)
+		log.Printf("can't read json body: %d", err)
 		return
 	}
-	err = m.cardsSvc.UnBlockedById(id)
+	err = m.cardsSvc.UnBlockedById(model.Id)
 	if err != nil {
 		log.Print("can't to blocked card by id")
 		writer.WriteHeader(http.StatusInternalServerError)
@@ -205,57 +254,16 @@ func (m *MainServer) HandleTransferMoneyCardToCard(writer http.ResponseWriter, r
 		return
 	}
 	log.Print(authentication)
-	value, ok := mux.FromContext(request.Context(), "id")
-	if !ok {
-		log.Print("can't read id FromContext")
-		writer.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	id, err := strconv.Atoi(value)
-	if err != nil {
-		log.Print("can't strconv atoi to blocked by id card")
-		writer.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+
 	transfer := cards.ModelTransferMoneyCardToCard{}
-	err = rest.ReadJSONBody(request, &transfer)
+	err := rest.ReadJSONBody(request, &transfer)
 	if err != nil {
 		log.Printf("can't READ json transfer money: %d", err)
 		writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	log.Println(transfer)
-	err = m.cardsSvc.TransferMoneyCardToCard(id /*transfer.IdCardSender*/, transfer.NumberCardRecipient, transfer.Count)
+	err = m.cardsSvc.TransferMoneyCardToCard(authentication.Id, transfer)
 	log.Print("transfer ok to handler")
 
-}
-
-func (m *MainServer) HandleGetCardsByOwnerId(writer http.ResponseWriter, request *http.Request) {
-	authentication, ok := jwt.FromContext(request.Context()).(*auth.Auth)
-	if !ok {
-		writer.WriteHeader(http.StatusBadRequest)
-		log.Print("can't authentication is not ok")
-		return
-	}
-	if authentication == nil {
-		writer.WriteHeader(http.StatusBadRequest)
-		log.Print("can't authentication is nil")
-		return
-	}
-	log.Print(authentication)
-	log.Print("user by id")
-	id := authentication.Id
-	models, err := m.cardsSvc.ViewCardsByOwnerId(id)
-	if err != nil {
-		log.Print("can't get all cards")
-		writer.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	log.Print(models)
-	err = rest.WriteJSONBody(writer, models)
-	if err != nil {
-		log.Print("can't write json get all cards")
-		writer.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 }
