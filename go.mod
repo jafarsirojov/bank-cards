@@ -1,4 +1,4 @@
-module bank-cards
+module github.com/jafarsirojov/bank-cards
 
 go 1.13
 

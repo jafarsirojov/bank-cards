@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bank-cards/pkg/core/auth"
+	"github.com/jafarsirojov/bank-cards/pkg/core/auth"
 	"fmt"
 	"github.com/jafarsirojov/mux/pkg/mux/middleware/jwt"
 	"log"

@@ -1,8 +1,8 @@
 package app
 
 import (
-	"bank-cards/pkg/core/auth"
-	"bank-cards/pkg/core/cards"
+	"github.com/jafarsirojov/bank-cards/pkg/core/auth"
+	"github.com/jafarsirojov/bank-cards/pkg/core/cards"
 	"github.com/jafarsirojov/mux/pkg/mux"
 	"github.com/jafarsirojov/mux/pkg/mux/middleware/jwt"
 	"github.com/jafarsirojov/rest/pkg/rest"

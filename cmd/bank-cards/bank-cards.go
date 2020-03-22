@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bank-cards/cmd/bank-cards/app"
-	"bank-cards/pkg/core/cards"
+	"github.com/jafarsirojov/bank-cards/cmd/bank-cards/app"
+	"github.com/jafarsirojov/bank-cards/pkg/core/cards"
 	"context"
 	"flag"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -55,7 +55,6 @@ func main() {
 	exactMux := mux.NewExactMux()
 	server := app.NewMainServer(exactMux, usersSvc)
 	exactMux.GET("/api/cards",
-		//todo: list my cards
 		server.HandleGetAllCards,
 		jwtMiddleware,
 		requestIdier,
