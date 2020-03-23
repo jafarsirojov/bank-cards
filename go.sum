@@ -53,6 +53,8 @@ github.com/jafarsirojov/jwt v0.0.0-20200314105317-066a3c3e1b15/go.mod h1:/oZ2lB1
 github.com/jafarsirojov/mux v0.0.0-20200314140307-ea3c1211c6b4/go.mod h1:ipFjhThDsZkH8XASvhKVD4Xvk1FvPQzLCzblSX2uXio=
 github.com/jafarsirojov/mux v0.0.0-20200315182917-5fde5ae3e991 h1:KGx6UJi3EZM13YAR0xefVc+MAOniJt8RUI+sDTlErP0=
 github.com/jafarsirojov/mux v0.0.0-20200315182917-5fde5ae3e991/go.mod h1:3G8eNH0CEud8f1UQu/823px5j7phHkD4r4Tst0Yx8+I=
+github.com/jafarsirojov/mux v0.0.0-20200319102745-aba2bcbcbbe0 h1:NqkTi2hPv4eLDLRIQ1bK8qF36chhoHMMfTBBjUacZS0=
+github.com/jafarsirojov/mux v0.0.0-20200319102745-aba2bcbcbbe0/go.mod h1:3G8eNH0CEud8f1UQu/823px5j7phHkD4r4Tst0Yx8+I=
 github.com/jafarsirojov/rest v0.0.0-20200314125553-fcefd85098ea h1:lubTP8ZGdwNgJPLh7v3LDwQ55pyGxs9qkiJbuooFvRI=
 github.com/jafarsirojov/rest v0.0.0-20200314125553-fcefd85098ea/go.mod h1:7LAzN0VmiB/budxWHtVB3J77c4nz50xKYW7ZzO3hy1k=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
