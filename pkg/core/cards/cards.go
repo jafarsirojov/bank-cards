@@ -19,29 +19,16 @@ func NewService(pool *pgxpool.Pool) *Service {
 }
 
 func (service *Service) Start() {
-	_, err := service.pool.Exec(context.Background(), `
-CREATE TABLE IF NOT EXISTS cards (
-	id BIGSERIAL,
-	number TEXT NOT NULL UNIQUE,
-    name TEXT,
-   	balance INTEGER NOT NULL,
-	owner_id INTEGER NOT NULL,
-    blocked BOOLEAN DEFAULT FALSE
-);
-`)
+	_, err := service.pool.Exec(context.Background(), cardsDDL)
 	log.Print(err)
 	numberBankCount := strconv.Itoa(initNumberCard)
-	_, err = service.pool.Exec(context.Background(), `
-INSERT INTO cards(id, number, name, balance, owner_id) VALUES (0, $1, 'Bank Count',  0, 0);
-`, numberBankCount)
+	_, err = service.pool.Exec(context.Background(), initialInsertCard, numberBankCount)
 	log.Print("Has Bank Count")
 
 }
 
 func (service *Service) All() (models []Cards, err error) {
-	rows, err := service.pool.Query(context.Background(), `
-SELECT id, number, name, balance, owner_id FROM cards WHERE blocked = FALSE;
-`)
+	rows, err := service.pool.Query(context.Background(), selectAllCards)
 	if err != nil {
 		return nil, fmt.Errorf("can't get cards from db: %w", err)
 	}
@@ -69,10 +56,7 @@ SELECT id, number, name, balance, owner_id FROM cards WHERE blocked = FALSE;
 
 func (service *Service) ById(id int) (model []Cards, err error) {
 	cards := Cards{}
-	err = service.pool.QueryRow(context.Background(), `
-	SELECT id, number, name, balance, owner_id 
-	FROM cards 
-	WHERE blocked = FALSE and id = $1;`, id).Scan(
+	err = service.pool.QueryRow(context.Background(), selectCardById, id).Scan(
 		&cards.Id,
 		&cards.Number,
 		&cards.Name,
@@ -89,10 +73,7 @@ func (service *Service) ById(id int) (model []Cards, err error) {
 
 func (service *Service) ByIdUserCard(idCard int, ownerID int) (model []Cards, err error) {
 	cards := Cards{}
-	err = service.pool.QueryRow(context.Background(), `
-	SELECT idCard, number, name, balance, owner_id 
-	FROM cards 
-	WHERE blocked = FALSE and idCard = $1 and owner_id = $2;`, idCard, ownerID).Scan(
+	err = service.pool.QueryRow(context.Background(), selectCardsByIdAndUserId, idCard, ownerID).Scan(
 		&cards.Id,
 		&cards.Number,
 		&cards.Name,
@@ -101,7 +82,7 @@ func (service *Service) ByIdUserCard(idCard int, ownerID int) (model []Cards, er
 	)
 	if err != nil {
 		log.Printf("can't select cards by idCard: %d", err)
-		log.Print("danniy client ne evlyyaetsya owner card ili takova card net")
+		log.Print("client not owner card & note ")
 		return nil, err
 	}
 	model = append(model, cards)
@@ -122,10 +103,7 @@ func (service *Service) ViewCardsByOwnerId(id int) (model []Cards, err error) {
 		}
 		err = tx.Commit(context.Background())
 	}()
-	err = tx.QueryRow(context.Background(), `
-	SELECT id, number, name, balance, owner_id 
-	FROM cards 
-	WHERE blocked = FALSE and owner_id = $1;`, id).Scan(
+	err = tx.QueryRow(context.Background(), selectCardsByOwnerId, id).Scan(
 		&user.Id,
 		&user.Number,
 		&user.Name,
@@ -140,14 +118,14 @@ func (service *Service) ViewCardsByOwnerId(id int) (model []Cards, err error) {
 func (service *Service) AddCard(model Cards) (err error) {
 	selectDescIdFromCard := 0
 	var numberCard int
-	err = service.pool.QueryRow(context.Background(), `SELECT id FROM cards ORDER BY id DESC LIMIT 1`).Scan(&selectDescIdFromCard)
+	err = service.pool.QueryRow(context.Background(), selectIdLimit1).Scan(&selectDescIdFromCard)
 	if err != nil {
 		log.Print("select id cards desc limit 1")
 		return err
 	}
 	numberCard = selectDescIdFromCard + 1 + initNumberCard
 	model.Number = strconv.Itoa(numberCard)
-	_, err = service.pool.Exec(context.Background(), `INSERT INTO cards(number, name, balance, owner_id) VALUES ($1, $2, $3, $4)`, model.Number, model.Name, model.Balance, model.OwnerID)
+	_, err = service.pool.Exec(context.Background(), insertCard, model.Number, model.Name, model.Balance, model.OwnerID)
 	if err != nil {
 		log.Print("can't exec insert ")
 		return err
