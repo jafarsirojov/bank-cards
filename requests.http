@@ -20,7 +20,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MCwibmFtZSI6I
 
 # Yes Admin list cards
 GET http://localhost:9009/api/cards
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MCwibmFtZSI6IlBldHlhIiwiZXhwIjoxNTg0NzA5MDUwfQ.5N3oREIhPW6gPo30GzStAGTus_F2nYQfBFzxi8zNX8I
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZXhwIjoxNTg3MDQzNjc2LCJwaG9uZSI6OTExfQ.niFwAR260ybjfXsQ8794zUcmlOSdvDJOmddhUZrHBPk
 
 ### list cards id=1
 GET http://localhost:9009/api/cards/1
@@ -32,7 +32,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6I
 ###
 
 GET http://localhost:9009/api/cards
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MCwibmFtZSI6IlBldHlhIiwiZXhwIjoxNTg0Njg1NDAzfQ.-72pg0Axdjf06ayPxSzlGc6P_ZpV0xTDwdG3O2vDX6E
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZXhwIjoxNTg3MDQ3NTQ2LCJwaG9uZSI6OTExfQ.4YjSrOX2EKqQccSv_v_RTJA07RWvuuQ5ZAUp2hj4vBM
 
 ###
 
@@ -41,14 +41,30 @@ GET http://localhost:9009/api/cards/ownerid/1
 ###
 
 
-POST http://localhost:9009/api/cards/transmoney/0
+POST http://localhost:9009/api/cards/transmoney
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZXhwIjoxNTg3MjExNzg5LCJwaG9uZSI6OTExfQ.quDrWZbJwZcOsKNgus5jNJsxcOLxC6k435Sh7yAL_VE
 Content-Type: application/json
 Accept: application/json
 
 {
-  "IdCardSender": 0,
-  "NumberCardRecipient": "202160000000009",
-  "Count": 150
+  "id_card_sender": 1,
+  "number_card_recipient": "2021600000000003",
+  "count": 150
+}
+
+###
+
+
+
+POST http://localhost:9009/api/cards/transmoney
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZXhwIjoxNTg3MjExNzg5LCJwaG9uZSI6OTExfQ.quDrWZbJwZcOsKNgus5jNJsxcOLxC6k435Sh7yAL_VE
+Content-Type: application/json
+Accept: application/json
+
+{
+  "id_card_sender": 1,
+  "number_card_recipient": "2021600000000003",
+  "count": 150
 }
 
 ###

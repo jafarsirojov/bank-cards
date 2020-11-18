@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 	"strconv"
+	"time"
 )
 
 const initNumberCard = 2021600000000000
@@ -89,8 +90,7 @@ func (service *Service) ByIdUserCard(idCard int, ownerID int) (model []Cards, er
 	return model, nil
 }
 
-func (service *Service) ViewCardsByOwnerId(id int) (model []Cards, err error) {
-	user := Cards{}
+func (service *Service) ViewCardsByOwnerId(id int) (models []Cards, err error) {
 	tx, err := service.pool.Begin(context.Background())
 	if err != nil {
 		log.Printf("can't begin view cards by id owner: %d", err)
@@ -103,16 +103,42 @@ func (service *Service) ViewCardsByOwnerId(id int) (model []Cards, err error) {
 		}
 		err = tx.Commit(context.Background())
 	}()
-	err = tx.QueryRow(context.Background(), selectCardsByOwnerId, id).Scan(
-		&user.Id,
-		&user.Number,
-		&user.Name,
-		&user.Balance,
-		&user.OwnerID,
-	)
 
-	model = append(model, user)
-	return model, nil
+
+	rows, err := service.pool.Query(context.Background(), selectCardsByOwnerId, id)
+	if err != nil {
+		return nil, fmt.Errorf("can't get cards from db: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		user := Cards{}
+		err = rows.Scan(
+			&user.Id,
+			&user.Number,
+			&user.Name,
+			&user.Balance,
+			&user.OwnerID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("can't get cards from db: %w", err)
+		}
+		models = append(models, user)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("can't get cards from db: %w", err)
+	}
+	return models, nil
+	//err = tx.QueryRow(context.Background(), selectCardsByOwnerId, id).Scan(
+	//	&user.Id,
+	//	&user.Number,
+	//	&user.Name,
+	//	&user.Balance,
+	//	&user.OwnerID,
+	//)
+	//
+	//model = append(model, user)
+	//return model, nil
 }
 
 func (service *Service) AddCard(model Cards) (err error) {
@@ -196,10 +222,11 @@ func (service *Service) UnBlockedById(id int) (err error) {
 	return nil
 }
 
-func (service *Service) TransferMoneyCardToCard(idCardSender int, model ModelTransferMoneyCardToCard) (err error) {
+func (service *Service) TransferMoneyCardToCard(ownerID int, model ModelTransferMoneyCardToCard) (err error, modelHistoryTranSender, modelHistoryTranRecipient ModelOperationsLog) {
 	tx, err := service.pool.Begin(context.Background())
 	if err != nil {
-		return err
+		log.Print("can't begin tx")
+		return err, modelHistoryIsNil, modelHistoryIsNil
 	}
 	defer func() {
 		if err != nil {
@@ -210,35 +237,39 @@ func (service *Service) TransferMoneyCardToCard(idCardSender int, model ModelTra
 	}()
 	var oldBalanceCardSender int64
 	var oldBalanceCardRecipient int64
+	var numberCardSender string
+	var senderID int64
+	var recipientID int64
 	err = tx.QueryRow(context.Background(),
-		`SELECT  balance 
+		`SELECT  balance, number, owner_id
 		FROM cards 
-		WHERE blocked = FALSE and id = $1;`, idCardSender).Scan(&oldBalanceCardSender)
+		WHERE blocked = FALSE and id = $1 and owner_id = $2;`, model.IdCardSender,ownerID).Scan(&oldBalanceCardSender, &numberCardSender, &senderID)
 	if err != nil {
-		log.Print(err)
-		return err
+	log.Printf("can't select sender to db: %s",err)
+		return err, modelHistoryIsNil, modelHistoryIsNil
 	}
 	err = tx.QueryRow(context.Background(), `
-	SELECT  balance 
+	SELECT  balance, owner_id 
 	FROM cards 
 	WHERE blocked = FALSE and number = $1;`,
-		model.NumberCardRecipient).Scan(&oldBalanceCardRecipient)
+		model.NumberCardRecipient).Scan(&oldBalanceCardRecipient, &recipientID)
 	if err != nil {
-		log.Print(err)
-		return err
+		log.Printf("can't select recipient to db: %s",err)
+		return err, modelHistoryIsNil, modelHistoryIsNil
 	}
 	var newBalanceCardSender = oldBalanceCardSender - model.Count
 	var newBalanceCardRecipient = oldBalanceCardRecipient + model.Count
 	_, err = tx.Exec(context.Background(),
 		`UPDATE cards 
 		SET balance=$1 
-		WHERE blocked = FALSE and id = $2`,
+		WHERE blocked = FALSE and id = $2 and owner_id = $3`,
 		newBalanceCardSender,
-		idCardSender /*model.IdCardSender*/,
+		model.IdCardSender /*model.IdCardSender*/,
+		ownerID,
 	)
 	if err != nil {
 		log.Printf("can't exec update transfer money: %d", err)
-		return err
+		return err, modelHistoryIsNil, modelHistoryIsNil
 	}
 	_, err = tx.Exec(context.Background(),
 		`UPDATE cards 
@@ -249,10 +280,34 @@ func (service *Service) TransferMoneyCardToCard(idCardSender int, model ModelTra
 	)
 	if err != nil {
 		log.Printf("can't exec update transfer money: %d", err)
-		return err
+		return err, modelHistoryIsNil, modelHistoryIsNil
 	}
 	log.Print("transfer ok")
-	return nil
+	modelHistoryTranSender = ModelOperationsLog{
+		Id:              0,
+		Name:            "Transfer_money",
+		Number:          numberCardSender,
+		RecipientSender: "sender",
+		Count:           model.Count,
+		BalanceOld:      oldBalanceCardSender,
+		BalanceNew:      newBalanceCardSender,
+		Time:            time.Now().Unix(),
+		OwnerID:         senderID,
+	}
+	modelHistoryTranRecipient = ModelOperationsLog{
+		Id:              0,
+		Name:            "Transfer_money",
+		Number:          model.NumberCardRecipient,
+		RecipientSender: "recipient",
+		Count:           model.Count,
+		BalanceOld:      oldBalanceCardRecipient,
+		BalanceNew:      newBalanceCardRecipient,
+		Time:            time.Now().Unix(),
+		OwnerID:         recipientID,
+	}
+
+	log.Print("save model history to dto")
+	return
 }
 
 type Cards struct {
@@ -269,6 +324,34 @@ type ModelTransferMoneyCardToCard struct {
 }
 
 type ModelBlockCard struct {
-	Id     int`json:"id"`
-	Number string`json:"number"`
+	Id     int    `json:"id"`
+	Number string `json:"number"`
+}
+
+type ModelOperationsLog struct {
+	Id              int    `json:"id"`
+	Name            string `json:"name"`
+	Number          string `json:"number"`
+	RecipientSender string `json:"recipientsender"`
+	Count           int64  `json:"count"`
+	BalanceOld      int64  `json:"balanceold"`
+	BalanceNew      int64  `json:"balancenew"`
+	Time            int64  `json:"time"`
+	OwnerID         int64  `json:"ownerid"`
+}
+
+var modelHistoryIsNil = ModelOperationsLog{
+	Id:              0,
+	Name:            "",
+	Number:          "",
+	RecipientSender: "",
+	Count:           0,
+	BalanceOld:      0,
+	BalanceNew:      0,
+	Time:            0,
+	OwnerID:         0,
+}
+
+type TokenResponse struct {
+	Token string `json:"token"`
 }

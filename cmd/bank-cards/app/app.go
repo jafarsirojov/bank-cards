@@ -1,6 +1,10 @@
 package app
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/jafarsirojov/bank-cards/pkg/core/auth"
 	"github.com/jafarsirojov/bank-cards/pkg/core/cards"
 	"github.com/jafarsirojov/mux/pkg/mux"
@@ -9,7 +13,10 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
+
+const addrHistorySvc = "http://localhost:9010"
 
 type MainServer struct {
 	exactMux *mux.ExactMux
@@ -48,6 +55,7 @@ func (m *MainServer) HandleGetAllCards(writer http.ResponseWriter, request *http
 			return
 		}
 		log.Print(models)
+		writer.Header().Set("Content-Type", "application/json")
 		err = rest.WriteJSONBody(writer, models)
 		if err != nil {
 			log.Print("can't write json get all cards")
@@ -263,7 +271,78 @@ func (m *MainServer) HandleTransferMoneyCardToCard(writer http.ResponseWriter, r
 		return
 	}
 	log.Println(transfer)
-	err = m.cardsSvc.TransferMoneyCardToCard(authentication.Id, transfer)
+	err, senderData, recipientData := m.cardsSvc.TransferMoneyCardToCard(authentication.Id, transfer)
+	if err != nil {
+		log.Printf("can't transfer money: %d", err)
+		writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	log.Print("transfer ok to handler")
 
+	token:= request.Header.Get("Authorization")
+	log.Printf("Bearer token %s",token)
+	token = token[7:]
+	log.Printf("token %s",token)
+
+	err = saveHistoryToSvcHistory(senderData,token)
+	if err != nil {
+		log.Printf("can't save to db svc history tranth sender: %s", err)
+		//save with local db
+	}
+	err = saveHistoryToSvcHistory(recipientData,token)
+	if err != nil {
+		log.Printf("can't save to db svc history tranth recipient: %s", err)
+		//save with local db
+	}
+	value := request.Context()
+	log.Printf("value: %s", value)
+
+}
+
+func saveHistoryToSvcHistory(data cards.ModelOperationsLog, token string) (err error) {
+	log.Print("starting sender request to history Svc")
+	requestBody, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("can't encode requestBody %v: %w", data, err)
+	}
+	ctx, _ := context.WithTimeout(context.Background(), time.Second)
+
+	request, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		fmt.Sprintf("%s/api/history", addrHistorySvc),
+		bytes.NewBuffer(requestBody),
+	)
+	if err != nil {
+		return fmt.Errorf("can't create request: %w", err)
+	}
+
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s",token))
+	log.Print("started sender request to history Svc")
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return fmt.Errorf("can't send request: %w", err)
+	}
+	defer response.Body.Close()
+
+	log.Print("finish sender request to history Svc")
+
+	switch response.StatusCode {
+	case 200:
+		log.Print("200 request to history Svc")
+		return nil
+	case 400:
+		log.Print("400 request to history Svc")
+		return fmt.Errorf("bad request is server: %s", addrHistorySvc)
+	case 401:
+		log.Print("401 unauthorized to history Svc")
+		return fmt.Errorf("unauthorized is server: %s", addrHistorySvc)
+	case 500:
+		log.Print("500 request to history Svc")
+		return fmt.Errorf("internel server error is server: %s", addrHistorySvc)
+	default:
+		log.Printf("response status code: %s", err)
+		return fmt.Errorf("err: %s", addrHistorySvc)
+	}
 }
